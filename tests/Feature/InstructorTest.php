@@ -38,7 +38,7 @@ class InstructorTest extends TestCase
         $response = $this->actingAs($user)
             ->post('instructor/schedule', [
             'class_type_id' => ClassType::first()->id,
-            'date' => '2023-04-20',
+            'date' => '2026-04-20',
             'time' => '09:00:00'
         ]);
 
@@ -46,7 +46,7 @@ class InstructorTest extends TestCase
 
         $this->assertDatabaseHas('scheduled_classes',[
             'class_type_id' => ClassType::first()->id,
-            'date_time' => '2023-04-20 09:00:00'
+            'date_time' => '2026-04-20 09:00:00'
         ]);
         $response->assertRedirectToRoute('schedule.index');
     }
@@ -60,7 +60,7 @@ class InstructorTest extends TestCase
         $scheduledClass = ScheduledClass::create([
             'instructor_id' => $user->id,
             'class_type_id' => ClassType::first()->id,
-            'date_time' => '2023-04-20 10:00:00'
+            'date_time' => now()->addHours(3)->minutes(15)->seconds(0)
         ]);
 
         // When
@@ -72,6 +72,27 @@ class InstructorTest extends TestCase
             'id' => $scheduledClass->id
         ]);
     }
+
+    public function test_cannot_schedule_class_in_past() {
+        $user = User::factory()->create([
+            'role' => 'instructor'
+        ]);
+        $this->seed(ClassTypeSeeder::class);
+
+        $response = $this->actingAs($user)
+            ->post('instructor/schedule', [
+                'class_type_id' => ClassType::first()->id,
+                'date' => '2020-01-01',
+                'time' => '09:00:00'
+            ]);
+
+        $response->assertSessionHasErrors(['date']);
+        $this->assertDatabaseMissing('scheduled_classes', [
+            'class_type_id' => ClassType::first()->id,
+            'date_time' => '2020-01-01 09:00:00'
+        ]);
+    }
+    
 
     public function test_cannot_cancel_class_less_than_two_hours_before() {
         $user = User::factory()->create([
